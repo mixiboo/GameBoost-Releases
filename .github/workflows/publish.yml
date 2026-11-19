@@ -1,0 +1,41 @@
+# 📦 release-drop 브랜치에 drop/GameBoost.exe 가 올라오면 자동으로 릴리스를 만들어요.
+#    (토큰 없이 이 저장소 권한만으로 동작) → 끝나면 release-drop 브랜치는 지워요.
+name: Publish GameBoost release
+
+on:
+  push:
+    branches: [release-drop]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release-drop
+
+      - name: 버전 읽기
+        id: v
+        run: echo "tag=$(tr -d '[:space:]' < drop/version.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: SHA-256 확인
+        run: cd drop && sha256sum -c GameBoost.exe.sha256
+
+      - name: 릴리스 만들기
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          target_commitish: main
+          name: GameBoost ${{ steps.v.outputs.tag }}
+          body_path: drop/RELEASE_NOTES.md
+          make_latest: true
+          files: |
+            drop/GameBoost.exe
+            drop/GameBoost.exe.sha256
+
+      - name: release-drop 브랜치 정리
+        if: always()
+        run: git push origin --delete release-drop || true
